@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloud Optimised DashCam</title>
+<meta name="description" content="Quality-gated, illumination-aware, coverage-chunked frame extraction from vehicle-mounted video with real-time processing timeline review.">
+<meta property="og:title" content="Cloud Optimised DashCam">
+<meta property="og:description" content="Quality-gated, illumination-aware, coverage-chunked frame extraction from vehicle-mounted video with real-time processing timeline review.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-alt: #1c2128;
+    --edge: #30363d;
+    --text: #e6edf3;
+    --dim: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --amber: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  main { width: min(1060px, 95vw); padding: 28px 0 60px; }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-bottom: 18px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--edge);
+  }
+  h1 { font-size: 24px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 18px; font-weight: 600; margin: 0 0 12px; }
+  h3 { font-size: 14px; font-weight: 600; margin: 0 0 10px; color: var(--text); }
+  .sub { color: var(--dim); margin: 0 0 18px; font-size: 13.5px; }
+  .topbar .sub { margin-bottom: 0; }
+  .nav-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .nav-tab {
+    background: var(--panel);
+    color: var(--dim);
+    border: 1px solid var(--edge);
+    padding: 7px 13px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .nav-tab:hover { color: var(--text); border-color: var(--accent); }
+  .nav-tab.active {
+    background: rgba(88, 166, 255, 0.14);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .screen { display: none; }
+  .screen.active { display: block; animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  button {
+    background: var(--accent);
+    border: 1px solid transparent;
+    color: #04121f;
+    font-weight: 600;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--edge);
+  }
+  button.secondary:hover { border-color: var(--accent); background: rgba(88,166,255,.08); }
+  button.small { padding: 5px 10px; font-size: 12.5px; }
+  button.active-zoom {
+    background: rgba(88, 166, 255, 0.2);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .row-between { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+  label.field { display: block; margin: 10px 0 4px; color: var(--dim); font-size: 12.5px; }
+  input[type=text], select {
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--edge);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13.5px;
+  }
+  .gates { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 8px; }
+  .gate {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: var(--bg);
+    border: 1px solid var(--edge);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+  .bar {
+    height: 10px;
+    background: var(--bg);
+    border: 1px solid var(--edge);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .bar > div { height: 100%; width: 0%; background: var(--accent); transition: width .25s; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--edge); }
+  th { color: var(--dim); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+  td.num, th.num { text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  tr:hover td { background: rgba(255, 255, 255, 0.02); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .chip {
+    background: rgba(63,185,80,.15);
+    color: var(--green);
+    border: 1px solid rgba(63,185,80,.4);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12.5px;
+  }
+  .notice { color: var(--amber); font-size: 13px; margin-top: 8px; }
+  .error { color: var(--red); }
+  a.back { color: var(--dim); font-size: 13px; text-decoration: none; cursor: pointer; display: inline-block; margin-bottom: 10px; }
+  a.back:hover { color: var(--accent); }
+
+  /* ---- KPI Grid & Comparison Cards ---- */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .kpi-box {
+    background: var(--bg);
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .kpi-label { color: var(--dim); font-size: 12px; margin-bottom: 4px; }
+  .kpi-val {
+    font-size: 20px;
+    font-weight: 600;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+  .kpi-delta { font-size: 12px; margin-top: 4px; color: var(--dim); }
+  .kpi-delta.pos { color: var(--green); }
+  .kpi-delta.neg { color: var(--amber); }
+
+  .compare-selectors {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .dual-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .dual-bar-row {
+    display: grid;
+    grid-template-columns: 150px 1fr 110px;
+    gap: 12px;
+    align-items: center;
+    font-size: 12.5px;
+  }
+  .dual-track {
+    height: 16px;
+    background: var(--bg);
+    border: 1px solid var(--edge);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+  }
+  .dual-fill-a { background: var(--accent); height: 100%; transition: width .25s; }
+  .dual-fill-b { background: var(--purple); height: 100%; opacity: 0.65; transition: width .25s; }
+
+  .frame-compare-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+  }
+  .frame-pane {
+    background: var(--bg);
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .frame-img-wrap {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #05070a;
+    border: 1px solid var(--edge);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 10px 0;
+  }
+  .frame-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  .meta-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px 12px;
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .meta-list strong {
+    color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  /* ---- Export Stats Toolbar ---- */
+  .export-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    background: var(--bg);
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 14px;
+  }
+  .export-bar span.title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--dim);
+    margin-right: 4px;
+  }
+
+  /* ---- Footage review player + zoomable timeline overlay ---- */
+  .player {
+    position: relative;
+    background: #05070a;
+    border: 1px solid var(--edge);
+    border-radius: 10px;
+    overflow: hidden;
+    min-height: 320px;
+  }
+  .player video {
+    display: block;
+    width: 100%;
+    max-height: 440px;
+    background: #000;
+  }
+  .player canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: .85;
+    cursor: grab;
+  }
+  .player canvas:active { cursor: grabbing; }
+  .zoom-toolbar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    background: var(--bg);
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 12px;
+  }
+  .zoom-readout {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12.5px;
+    color: var(--accent);
+    background: rgba(88, 166, 255, 0.1);
+    border: 1px solid rgba(88, 166, 255, 0.3);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .overlay-controls { margin-top: 10px; }
+  .overlay-controls label { color: var(--dim); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+</style>
+</head>
+<body>
+<main>
+  <!-- Top Bar & Navigation -->
+  <header class="topbar">
+    <div>
+      <h1>Cloud Optimised DashCam</h1>
+      <div class="sub">Quality-gated, illumination-aware, coverage-chunked frame extraction</div>
+    </div>
+    <nav class="nav-tabs" aria-label="Workspace navigation">
+      <button type="button" class="nav-tab active" data-nav="screen-welcome">Overview</button>
+      <button type="button" class="nav-tab" data-nav="screen-configure">Select Video File</button>
+      <button type="button" class="nav-tab" data-nav="screen-compare">Comparison Mode</button>
+      <button type="button" class="nav-tab" data-nav="screen-review">Timeline &amp; Review</button>
+    </nav>
+  </header>
+
+  <!-- 1 · welcome -->
+  <section class="screen active" id="screen-welcome">
+    <div class="card">
+      <h2>Get started</h2>
+      <p class="sub">Run the bundled synthetic fixtures with mock telemetry, process
+        your own footage, compare runs &amp; quality gates side-by-side, or review footage
+        with interactive timeline zoom and exportable telemetry stats.</p>
+      <div class="row">
+        <button id="btn-demo">Run Local Demo</button>
+        <button class="secondary" id="btn-configure">Select Video File</button>
+        <button class="secondary" id="btn-compare">Comparison Mode</button>
+        <button class="secondary" id="btn-review">Review Footage</button>
+      </div>
+
+      <!-- Quick Export Stats Bar -->
+      <div class="export-bar">
+        <span class="title">Export Stats:</span>
+        <button type="button" class="secondary small" data-export="json">Export Full Stats (JSON)</button>
+        <button type="button" class="secondary small" data-export="csv_summaries">Video Summaries (CSV)</button>
+        <button type="button" class="secondary small" data-export="csv_manifest">Frame Manifest (CSV)</button>
+        <button type="button" class="secondary small" data-export="yaml_coverage">Coverage Chunks (YAML)</button>
+        <span id="export-status" style="font-size:12px; color:var(--green);"></span>
+      </div>
+    </div>
+
+    <!-- Live Run Summary Snapshot on Welcome -->
+    <div class="card" id="welcome-stats-card">
+      <div class="row-between" style="margin-bottom:10px">
+        <h2 style="margin:0">Latest Extraction Telemetry Snapshot</h2>
+        <button type="button" class="secondary small" id="btn-refresh-snapshot">Refresh Stats</button>
+      </div>
+      <div class="kpi-grid" id="welcome-kpis"></div>
+    </div>
+  </section>
+
+  <!-- 2 · configure -->
+  <section class="screen" id="screen-configure">
+    <a class="back" data-goto="screen-welcome">&larr; Back</a>
+    <div class="card">
+      <h2>Select Video File</h2>
+      <label class="field">Video directory (server path)</label>
+      <input type="text" id="in-videos" placeholder="e.g. test_data/videos">
+      <label class="field">Output directory (server path)</label>
+      <input type="text" id="in-output" placeholder="e.g. extracted_frames">
+      <label class="field">GPX telemetry</label>
+      <select id="in-gpx">
+        <option value="config">As configured in config.yaml</option>
+        <option value="local">Local GPX path&hellip;</option>
+        <option value="mock">Mock GCS (synthetic track)</option>
+        <option value="none">None (fixed-location fallback)</option>
+      </select>
+      <input type="text" id="in-gpx-path" placeholder="test_data/track.gpx" style="display:none; margin-top:8px">
+      <label class="field">Mobile network</label>
+      <select id="in-network"></select>
+      <label class="field">Sampling</label>
+      <select id="in-sampling">
+        <option value="">As configured</option>
+        <option value="seconds_1">Every 1 s</option>
+        <option value="seconds_2">Every 2 s</option>
+        <option value="frames_30">Every 30 frames</option>
+        <option value="frames_10">Every 10 frames</option>
+      </select>
+      <label class="field">Gates (can only disable what config enables)</label>
+      <div class="gates" id="gates">
+        <label class="gate"><input type="checkbox" data-gate="blur" checked> Blur</label>
+        <label class="gate"><input type="checkbox" data-gate="exposure" checked> Exposure</label>
+        <label class="gate"><input type="checkbox" data-gate="duplicate" checked> Duplicate</label>
+        <label class="gate"><input type="checkbox" data-gate="illumination" checked> Illumination</label>
+        <label class="gate"><input type="checkbox" data-gate="weiss" checked> Weiss</label>
+        <label class="gate"><input type="checkbox" data-gate="coverage" checked> Coverage</label>
+      </div>
+      <div class="row" style="margin-top:18px">
+        <button id="btn-start">Start Extraction</button>
+        <span id="configure-error" class="error"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · processing -->
+  <section class="screen" id="screen-processing">
+    <div class="card">
+      <h2>Processing&hellip;</h2>
+      <p class="sub" id="processing-video">Starting pipeline&hellip;</p>
+      <div class="bar"><div id="progress-fill"></div></div>
+      <p class="sub" id="progress-label" style="margin-top:8px">0%</p>
+    </div>
+  </section>
+
+  <!-- 4 · complete -->
+  <section class="screen" id="screen-complete">
+    <a class="back" data-goto="screen-welcome">&larr; Start over</a>
+    <div class="card">
+      <h2>Processing Complete</h2>
+      <div id="complete-error" class="error"></div>
+      <table id="summary-table" style="display:none">
+        <thead><tr>
+          <th>Video</th><th class="num">Sampled</th><th class="num">Kept</th><th class="num">Blur</th>
+          <th class="num">Exposure</th><th class="num">Duplicate</th><th class="num">Reflectance</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="chips" id="zone-chips"></div>
+      <div class="export-bar">
+        <span class="title">Export Run Stats:</span>
+        <button type="button" class="secondary small" data-export="json">Download JSON Report</button>
+        <button type="button" class="secondary small" data-export="csv_summaries">Download Summaries CSV</button>
+        <button type="button" class="secondary small" data-export="csv_manifest">Download Frame Manifest CSV</button>
+        <button type="button" class="secondary small" data-export="yaml_coverage">Download Coverage YAML</button>
+      </div>
+      <div class="row" style="margin-top:18px">
+        <button id="btn-to-review">Review Footage with Overlay</button>
+        <button class="secondary" id="btn-to-compare">Open in Comparison Mode</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · footage review with processing overlay + timeline zoom -->
+  <section class="screen" id="screen-review">
+    <a class="back" data-goto="screen-welcome">&larr; Back</a>
+    <div class="card">
+      <div class="row-between">
+        <div>
+          <h2>Footage review &amp; Timeline Zoom</h2>
+          <p class="sub">Inspect frame capture bursts, chunk creation markers, and carrier coverage upload windows.
+            Use the zoom controls or mouse wheel on the timeline to inspect sub-second intervals.</p>
+        </div>
+        <div class="row">
+          <button type="button" class="secondary small" id="btn-export-timeline-csv">Export Zoomed Timeline (CSV)</button>
+          <button type="button" class="secondary small" data-export="json">Export Full Stats (JSON)</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-bottom:10px">
+        <label style="font-size:13px; color:var(--dim);">
+          Recorded video timeline:
+          <select id="review-video-select" style="width:auto; min-width:260px; margin-left:6px;"></select>
+        </label>
+        <label style="font-size:13px; color:var(--dim);">
+          Or load local video file:
+          <input type="file" id="review-file" accept="video/*" style="margin-left:6px;">
+        </label>
+      </div>
+
+      <div class="notice" id="review-notice" style="display:none"></div>
+
+      <!-- Interactive Zoom & Pan Toolbar -->
+      <div class="zoom-toolbar" id="zoom-toolbar">
+        <span style="font-size:12.5px; color:var(--dim); font-weight:600;">Timeline Zoom:</span>
+        <button type="button" class="secondary small active-zoom" data-zoom="1">1&times;</button>
+        <button type="button" class="secondary small" data-zoom="2">2&times;</button>
+        <button type="button" class="secondary small" data-zoom="4">4&times;</button>
+        <button type="button" class="secondary small" data-zoom="8">8&times;</button>
+        <button type="button" class="secondary small" id="btn-zoom-out" title="Zoom Out">&minus;</button>
+        <input type="range" id="timeline-zoom" min="1" max="10" step="0.5" value="1" style="width:110px">
+        <button type="button" class="secondary small" id="btn-zoom-in" title="Zoom In">+</button>
+        <button type="button" class="secondary small" id="btn-zoom-reset">Reset</button>
+
+        <label style="font-size:12.5px; color:var(--dim); display:flex; align-items:center; gap:6px; margin-left:6px;">
+          Pan Window
+          <input type="range" id="timeline-pan" min="0" max="100" step="1" value="0" style="width:110px" disabled>
+        </label>
+        <span class="zoom-readout" id="zoom-window-label">1.0&times; · [0.0s – 6.0s]</span>
+      </div>
+
+      <!-- Simulated Playback / Scrubber Bar (works with or without uploaded video) -->
+      <div class="zoom-toolbar" style="margin-top:8px;">
+        <button type="button" class="small" id="btn-sim-play">Play Timeline</button>
+        <label style="font-size:12.5px; color:var(--dim); display:flex; align-items:center; gap:8px; flex:1;">
+          Playhead
+          <input type="range" id="timeline-scrubber" min="0" max="6" step="0.05" value="6" style="flex:1;">
+        </label>
+        <span class="zoom-readout" id="playhead-readout">t = 6.00s</span>
+      </div>
+
+      <div class="player" id="player" style="margin-top:12px">
+        <video id="review-video" controls playsinline style="display:none"></video>
+        <canvas id="overlay-canvas"></canvas>
+      </div>
+
+      <div class="overlay-controls row" id="overlay-controls">
+        <label class="gate" style="margin:0">
+          <input type="checkbox" id="overlay-toggle" checked> Processing overlay
+        </label>
+        <label>Opacity
+          <input type="range" id="overlay-opacity" min="15" max="100" value="90">
+        </label>
+        <label class="gate" style="margin:0">
+          <input type="checkbox" id="show-blur-curve" checked> Frame blur score trace
+        </label>
+        <span style="font-size:12px; color:var(--dim); margin-left:auto;">
+          Tip: Scroll mouse wheel on chart to zoom, drag to pan, hover to inspect frame telemetry.
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · comparison mode -->
+  <section class="screen" id="screen-compare">
+    <a class="back" data-goto="screen-welcome">&larr; Back</a>
+
+    <!-- Run-to-Run / Gate Configuration Comparison -->
+    <div class="card">
+      <div class="row-between">
+        <div>
+          <h2>Comparison Mode &mdash; Run &amp; Gate Efficiency</h2>
+          <p class="sub">Compare quality-gated extraction against ungated baselines or previous pipeline runs to quantify bandwidth savings and rejection breakdowns.</p>
+        </div>
+        <div class="row">
+          <button type="button" class="secondary small" id="btn-refresh-compare">Refresh Comparison</button>
+          <button type="button" class="secondary small" data-export="json">Export Comparison JSON</button>
+        </div>
+      </div>
+
+      <div class="compare-selectors">
+        <div>
+          <label class="field">Primary Run (Run A)</label>
+          <select id="compare-run-a"></select>
+        </div>
+        <div>
+          <label class="field">Comparison Baseline (Run B)</label>
+          <select id="compare-run-b"></select>
+        </div>
+      </div>
+
+      <div class="kpi-grid" id="compare-kpi-grid"></div>
+
+      <h3>Metric Distribution (Run A vs Run B)</h3>
+      <div class="dual-bars" id="compare-bars"></div>
+    </div>
+
+    <!-- Side-by-Side Video & Extracted Frame Comparison -->
+    <div class="card">
+      <h2>Side-by-Side Video &amp; Frame Telemetry Inspector</h2>
+      <p class="sub">Compare extracted frames, blur scores, illumination log-gain, and solar elevation between two survey segments.</p>
+
+      <div class="compare-selectors">
+        <div>
+          <label class="field">Left Survey Segment (Video A)</label>
+          <select id="compare-video-a"></select>
+        </div>
+        <div>
+          <label class="field">Right Survey Segment (Video B)</label>
+          <select id="compare-video-b"></select>
+        </div>
+      </div>
+
+      <div class="row" style="margin-bottom:8px;">
+        <label style="font-size:12.5px; color:var(--dim); display:flex; align-items:center; gap:8px; flex:1;">
+          Synchronized Frame Step
+          <input type="range" id="compare-frame-idx" min="0" max="5" step="1" value="0" style="flex:1;">
+        </label>
+        <span class="zoom-readout" id="compare-frame-label">Sample #1</span>
+      </div>
+
+      <div class="frame-compare-grid" id="frame-compare-panes"></div>
+    </div>
+
+    <!-- Multi-Carrier Coverage Comparison -->
+    <div class="card">
+      <h2>Carrier Network Coverage Comparison</h2>
+      <p class="sub">Configured geographic upload zones across UK mobile operators from <code>config.yaml</code>.</p>
+      <table id="carrier-compare-table">
+        <thead>
+          <tr>
+            <th>Carrier Network</th>
+            <th>Configured Zones</th>
+            <th class="num">Zone Count</th>
+            <th class="num">5G Capable</th>
+            <th class="num">Footprint (deg&sup2;)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const screens = document.querySelectorAll(".screen");
+const navTabs = document.querySelectorAll(".nav-tab");
+
+function show(id) {
+  screens.forEach((s) => s.classList.toggle("active", s.id === id));
+  navTabs.forEach((t) => t.classList.toggle("active", t.dataset.nav === id));
+  if (id === "screen-compare") loadComparison();
+  if (id === "screen-review") ensureReviewLoaded();
+  if (id === "screen-welcome") loadWelcomeSnapshot();
+}
+
+document.querySelectorAll("a.back").forEach((a) =>
+  a.addEventListener("click", () => show(a.dataset.goto)));
+navTabs.forEach((btn) =>
+  btn.addEventListener("click", () => show(btn.dataset.nav)));
+
+/* ---------- networks dropdown ---------- */
+async function loadNetworks() {
+  try {
+    const res = await fetch("/api/networks");
+    if (!res.ok) return;
+    const body = await res.json();
+    const sel = $("in-network");
+    sel.innerHTML = "";
+    body.networks.forEach((n) => {
+      const opt = document.createElement("option");
+      opt.value = n; opt.textContent = n;
+      if (n === body.default) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } catch (e) { /* panel still usable without the dropdown */ }
+}
+loadNetworks();
+
+$("in-gpx").addEventListener("change", () => {
+  $("in-gpx-path").style.display =
+    $("in-gpx").value === "local" ? "block" : "none";
+});
+
+/* ---------- Export Stats Download Handler ---------- */
+async function triggerExport(format) {
+  const statusEl = $("export-status");
+  if (statusEl) statusEl.textContent = "Preparing export…";
+  try {
+    const res = await fetch("/api/export?format=" + encodeURIComponent(format));
+    if (!res.ok) throw new Error(res.statusText);
+    const blob = await res.blob();
+    const filenameMap = {
+      json: "dashcam_extraction_stats.json",
+      csv_summaries: "video_summaries.csv",
+      csv_manifest: "frame_manifest.csv",
+      yaml_coverage: "coverage_chunks.yaml",
+    };
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filenameMap[format] || ("export." + format);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    if (statusEl) {
+      statusEl.textContent = "Downloaded " + a.download;
+      setTimeout(() => { statusEl.textContent = ""; }, 3500);
+    }
+  } catch (e) {
+    if (statusEl) statusEl.textContent = "Export failed: " + e.message;
+  }
+}
+
+document.querySelectorAll("[data-export]").forEach((btn) => {
+  btn.addEventListener("click", () => triggerExport(btn.dataset.export));
+});
+
+/* ---------- Welcome Snapshot ---------- */
+async function loadWelcomeSnapshot() {
+  const grid = $("welcome-kpis");
+  if (!grid) return;
+  try {
+    const res = await fetch("/api/compare");
+    if (!res.ok) return;
+    const data = await res.json();
+    const active = (data.runs || [])[0];
+    if (!active) return;
+    const m = active.metrics;
+    const kb = (m.kept_bytes / 1024).toFixed(1);
+    const savedKb = (m.saved_bytes / 1024).toFixed(1);
+    grid.innerHTML = `
+      <div class="kpi-box">
+        <div class="kpi-label">Survey Videos</div>
+        <div class="kpi-val">${m.videos_count}</div>
+        <div class="kpi-delta">${m.total_frames} total raw frames</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-label">Sampled &rarr; Kept</div>
+        <div class="kpi-val">${m.sampled_frames} &rarr; ${m.kept_frames}</div>
+        <div class="kpi-delta pos">${m.retention_pct}% retention rate</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-label">Quality Gate Rejections</div>
+        <div class="kpi-val">${m.rejected_frames}</div>
+        <div class="kpi-delta">Blur: ${m.rejected_blur} · Exp: ${m.rejected_exposure} · Dup: ${m.rejected_duplicate}</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-label">Bandwidth Saved</div>
+        <div class="kpi-val">${m.bandwidth_saved_pct}%</div>
+        <div class="kpi-delta pos">${savedKb} KB filtered (${kb} KB kept)</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-label">Mean Blur / Intensity</div>
+        <div class="kpi-val">${m.mean_blur_score}</div>
+        <div class="kpi-delta">Mean luma: ${m.mean_intensity}</div>
+      </div>
+    `;
+  } catch (e) { /* ignore */ }
+}
+$("btn-refresh-snapshot").addEventListener("click", loadWelcomeSnapshot);
+loadWelcomeSnapshot();
+
+/* ---------- launch ---------- */
+function gatePayload() {
+  const gates = {};
+  document.querySelectorAll("#gates input").forEach((cb) => {
+    gates[cb.dataset.gate] = cb.checked;
+  });
+  return gates;
+}
+
+async function launch(payload) {
+  $("configure-error").textContent = "";
+  const res = await fetch("/api/extract", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const detail = (await res.json().catch(() => ({}))).detail || res.statusText;
+    $("configure-error").textContent = detail;
+    if (res.status === 409) { show("screen-processing"); poll(); }
+    return;
+  }
+  show("screen-processing");
+  poll();
+}
+
+$("btn-demo").addEventListener("click", () =>
+  launch({
+    videos: "test_data/videos",
+    output: "extracted_frames",
+    gpx_source: "local",
+    gpx_path: "test_data/track.gpx",
+    gates: gatePayload(),
+  }));
+$("btn-configure").addEventListener("click", () => show("screen-configure"));
+$("btn-compare").addEventListener("click", () => show("screen-compare"));
+$("btn-review").addEventListener("click", () => show("screen-review"));
+$("btn-to-review").addEventListener("click", () => show("screen-review"));
+$("btn-to-compare").addEventListener("click", () => show("screen-compare"));
+$("btn-start").addEventListener("click", () => {
+  const payload = { gates: gatePayload() };
+  if ($("in-videos").value) payload.videos = $("in-videos").value;
+  if ($("in-output").value) payload.output = $("in-output").value;
+  if ($("in-sampling").value) payload.sampling = $("in-sampling").value;
+  if ($("in-network").value) payload.network = $("in-network").value;
+  const gpx = $("in-gpx").value;
+  if (gpx !== "config") {
+    payload.gpx_source = gpx;
+    if (gpx === "local") payload.gpx_path = $("in-gpx-path").value;
+  }
+  launch(payload);
+});
+
+/* ---------- progress polling ---------- */
+let pollTimer = null;
+function poll() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    const res = await fetch("/api/status");
+    if (!res.ok) return;
+    const s = await res.json();
+    const pct = Math.round(s.progress * 100);
+    $("progress-fill").style.width = pct + "%";
+    $("progress-label").textContent = pct + "%";
+    if (s.video) $("processing-video").textContent = "Processing " + s.video;
+    if (s.state === "done" || s.state === "failed") {
+      clearInterval(pollTimer);
+      renderComplete(s);
+      show("screen-complete");
+    }
+  }, 400);
+}
+
+function renderComplete(s) {
+  $("complete-error").textContent =
+    s.state === "failed" ? "Pipeline failed: " + (s.error || "unknown error") : "";
+  const table = $("summary-table");
+  const tbody = table.querySelector("tbody");
+  tbody.innerHTML = "";
+  (s.summaries || []).forEach((v) => {
+    const tr = document.createElement("tr");
+    [v.video, v.sampled, v.kept, v.blur, v.exposure, v.duplicate, v.reflectance]
+      .forEach((cell, idx) => {
+        const td = document.createElement("td");
+        if (idx > 0) td.className = "num";
+        td.textContent = cell;
+        tr.appendChild(td);
+      });
+    tbody.appendChild(tr);
+  });
+  table.style.display = (s.summaries || []).length ? "table" : "none";
+  const chips = $("zone-chips");
+  chips.innerHTML = "";
+  Object.entries(s.zones || {}).forEach(([zone, count]) => {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.textContent = `${zone} · ${count} chunk${count === 1 ? "" : "s"}`
+      + (s.network ? ` (${s.network})` : "");
+    chips.appendChild(chip);
+  });
+}
+
+/* ==========================================================================
+   COMPARISON MODE
+   ========================================================================== */
+let compareData = null;
+
+async function loadComparison() {
+  try {
+    const res = await fetch("/api/compare");
+    if (!res.ok) return;
+    compareData = await res.json();
+    populateRunSelectors();
+    populateVideoSelectors();
+    renderCarrierTable();
+  } catch (e) { /* ignore */ }
+}
+
+$("btn-refresh-compare").addEventListener("click", loadComparison);
+
+function populateRunSelectors() {
+  const runs = (compareData && compareData.runs) || [];
+  const selA = $("compare-run-a");
+  const selB = $("compare-run-b");
+  selA.innerHTML = "";
+  selB.innerHTML = "";
+  runs.forEach((r, idx) => {
+    const optA = document.createElement("option");
+    optA.value = idx;
+    optA.textContent = r.label;
+    selA.appendChild(optA);
+
+    const optB = document.createElement("option");
+    optB.value = idx;
+    optB.textContent = r.label;
+    if (idx === Math.min(1, runs.length - 1)) optB.selected = true;
+    selB.appendChild(optB);
+  });
+  renderRunComparison();
+}
+
+$("compare-run-a").addEventListener("change", renderRunComparison);
+$("compare-run-b").addEventListener("change", renderRunComparison);
+
+function renderRunComparison() {
+  if (!compareData || !compareData.runs.length) return;
+  const runA = compareData.runs[Number($("compare-run-a").value) || 0];
+  const runB = compareData.runs[Number($("compare-run-b").value) || 0];
+  if (!runA || !runB) return;
+
+  const ma = runA.metrics;
+  const mb = runB.metrics;
+  const keptDelta = ma.kept_frames - mb.kept_frames;
+  const retDelta = (ma.retention_pct - mb.retention_pct).toFixed(1);
+  const savedDelta = (ma.bandwidth_saved_pct - mb.bandwidth_saved_pct).toFixed(1);
+  const rejDelta = ma.rejected_frames - mb.rejected_frames;
+
+  $("compare-kpi-grid").innerHTML = `
+    <div class="kpi-box">
+      <div class="kpi-label">Kept Frames (Run A vs B)</div>
+      <div class="kpi-val">${ma.kept_frames} <span style="font-size:13px;color:var(--dim)">vs ${mb.kept_frames}</span></div>
+      <div class="kpi-delta ${keptDelta <= 0 ? 'pos' : 'neg'}">
+        Delta: ${keptDelta > 0 ? '+' : ''}${keptDelta} frames
+      </div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-label">Retention Ratio</div>
+      <div class="kpi-val">${ma.retention_pct}% <span style="font-size:13px;color:var(--dim)">vs ${mb.retention_pct}%</span></div>
+      <div class="kpi-delta">${retDelta > 0 ? '+' : ''}${retDelta} pp</div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-label">Upstream Bandwidth Saved</div>
+      <div class="kpi-val">${ma.bandwidth_saved_pct}% <span style="font-size:13px;color:var(--dim)">vs ${mb.bandwidth_saved_pct}%</span></div>
+      <div class="kpi-delta pos">${savedDelta > 0 ? '+' : ''}${savedDelta}% data reduction</div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-label">Gate Rejections (Blur / Exp / Dup)</div>
+      <div class="kpi-val">${ma.rejected_frames} <span style="font-size:13px;color:var(--dim)">vs ${mb.rejected_frames}</span></div>
+      <div class="kpi-delta">${rejDelta > 0 ? '+' : ''}${rejDelta} rejected frames</div>
+    </div>
+  `;
+
+  const maxFrames = Math.max(ma.sampled_frames, mb.sampled_frames, 1);
+  const rows = [
+    { label: "Sampled Frames", a: ma.sampled_frames, b: mb.sampled_frames },
+    { label: "Kept Frames", a: ma.kept_frames, b: mb.kept_frames },
+    { label: "Rejected (Blur)", a: ma.rejected_blur, b: mb.rejected_blur },
+    { label: "Rejected (Exposure)", a: ma.rejected_exposure, b: mb.rejected_exposure },
+    { label: "Rejected (Duplicate)", a: ma.rejected_duplicate, b: mb.rejected_duplicate },
+  ];
+  $("compare-bars").innerHTML = rows.map((r) => {
+    const pctA = Math.min(100, (r.a / maxFrames) * 100).toFixed(1);
+    const pctB = Math.min(100, (r.b / maxFrames) * 100).toFixed(1);
+    return `
+      <div class="dual-bar-row">
+        <span>${r.label}</span>
+        <div class="dual-track" title="Run A: ${r.a} | Run B: ${r.b}">
+          <div class="dual-fill-a" style="width:${pctA}%"></div>
+          <div class="dual-fill-b" style="width:${pctB}%"></div>
+        </div>
+        <span style="text-align:right; font-family:monospace;">A: ${r.a} · B: ${r.b}</span>
+      </div>
+    `;
+  }).join("");
+}
+
+function populateVideoSelectors() {
+  const videos = (compareData && compareData.videos) || [];
+  const selA = $("compare-video-a");
+  const selB = $("compare-video-b");
+  selA.innerHTML = "";
+  selB.innerHTML = "";
+
+  // Prefer videos that have kept frames by default
+  const withFrames = videos.map((v, i) => ({ v, i })).filter((x) => x.v.frames && x.v.frames.length > 0);
+  const defaultA = withFrames[0] ? withFrames[0].i : 0;
+  const defaultB = withFrames[1] ? withFrames[1].i : Math.min(1, videos.length - 1);
+
+  videos.forEach((v, idx) => {
+    const label = `${v.stem} (${v.kept}/${v.sampled} kept · blur ${v.mean_blur})`;
+    const optA = document.createElement("option");
+    optA.value = idx;
+    optA.textContent = label;
+    if (idx === defaultA) optA.selected = true;
+    selA.appendChild(optA);
+
+    const optB = document.createElement("option");
+    optB.value = idx;
+    optB.textContent = label;
+    if (idx === defaultB) optB.selected = true;
+    selB.appendChild(optB);
+  });
+  updateFrameComparison();
+}
+
+$("compare-video-a").addEventListener("change", updateFrameComparison);
+$("compare-video-b").addEventListener("change", updateFrameComparison);
+$("compare-frame-idx").addEventListener("input", updateFrameComparison);
+
+function updateFrameComparison() {
+  if (!compareData || !compareData.videos.length) return;
+  const vA = compareData.videos[Number($("compare-video-a").value) || 0];
+  const vB = compareData.videos[Number($("compare-video-b").value) || 0];
+  const slider = $("compare-frame-idx");
+  const maxLen = Math.max(
+    (vA && vA.frames ? vA.frames.length : 0),
+    (vB && vB.frames ? vB.frames.length : 0),
+    1
+  );
+  slider.max = Math.max(0, maxLen - 1);
+  const idx = Math.min(Number(slider.value) || 0, maxLen - 1);
+  $("compare-frame-label").textContent = `Sample #${idx + 1} of ${maxLen}`;
+
+  $("frame-compare-panes").innerHTML = [
+    renderVideoPane("Segment A", vA, idx),
+    renderVideoPane("Segment B", vB, idx),
+  ].join("");
+}
+
+function renderVideoPane(title, v, frameIdx) {
+  if (!v) return `<div class="frame-pane">No segment available</div>`;
+  const frame = (v.frames || [])[frameIdx] || (v.frames || [])[0] || null;
+  const imgHtml = frame && frame.preview_path
+    ? `<img src="/api/frame-image?path=${encodeURIComponent(frame.preview_path)}" alt="${v.stem} frame">`
+    : `<span style="color:var(--dim); font-size:12.5px;">No kept frames (${v.blur} rejected by blur gate)</span>`;
+
+  return `
+    <div class="frame-pane">
+      <div class="row-between">
+        <strong>${title}: ${v.stem}</strong>
+        <span class="chip" style="margin:0">${v.kept}/${v.sampled} kept (${v.retention_pct}%)</span>
+      </div>
+      <div class="frame-img-wrap">${imgHtml}</div>
+      <div class="meta-list">
+        <div>Frame Index: <strong>${frame ? frame.frame_index : '—'}</strong></div>
+        <div>Timestamp: <strong>${frame ? frame.timestamp_sec.toFixed(2) + 's' : '—'}</strong></div>
+        <div>Blur Score: <strong>${frame ? frame.blur_score.toFixed(1) : v.mean_blur}</strong></div>
+        <div>Mean Intensity: <strong>${frame ? frame.mean_intensity.toFixed(1) : v.mean_intensity}</strong></div>
+        <div>Sun Elevation: <strong>${frame && frame.sun_elevation_deg !== null ? frame.sun_elevation_deg.toFixed(2) + '°' : '—'}</strong></div>
+        <div>Illum Log-Gain: <strong>${frame && frame.log_gain !== null ? frame.log_gain.toFixed(4) : '—'}</strong></div>
+        <div>Frame Size: <strong>${frame ? (frame.bytes / 1024).toFixed(1) + ' KB' : '—'}</strong></div>
+        <div>Capture Time: <strong>${v.file_datetime || '—'}</strong></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCarrierTable() {
+  const tbody = $("carrier-compare-table").querySelector("tbody");
+  tbody.innerHTML = "";
+  ((compareData && compareData.carriers) || []).forEach((c) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${c.network.toUpperCase()}</strong></td>
+      <td>${c.zones.join(", ")}</td>
+      <td class="num">${c.zone_count}</td>
+      <td class="num">${c.has_5g ? '<span style="color:var(--green)">Yes (5G+4G)</span>' : '4G Only'}</td>
+      <td class="num">${c.coverage_deg2.toFixed(5)}</td>
+      <td>${c.is_active ? '<span class="chip">Active Carrier</span>' : '<span style="color:var(--dim)">Available</span>'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ==========================================================================
+   FOOTAGE REVIEW: PROCESSING OVERLAY + INTERACTIVE TIMELINE ZOOM & PAN
+   ========================================================================== */
+const video = $("review-video");
+const canvas = $("overlay-canvas");
+const ctx = canvas.getContext("2d");
+let timeline = null;          // /api/timeline payload
+let uploadCurve = [];         // [{t, bytes}] simulated drain over windows
+let rafId = null;
+
+// Zoom & Pan state
+let zoomFactor = 1.0;         // 1x to 10x
+let panNormalized = 0.0;      // 0.0 to 1.0 of scrollable range
+let hoverTime = null;         // timestamp under cursor
+let isDragging = false;
+let dragStartX = 0;
+let dragStartPan = 0;
+let simPlaying = false;
+let simTime = 6.0;
+let simTimer = null;
+
+async function ensureReviewLoaded() {
+  if (!timeline) {
+    await loadTimeline("");
+    draw();
+  } else {
+    draw();
+  }
+}
+
+$("review-video-select").addEventListener("change", async (ev) => {
+  await loadTimeline(ev.target.value);
+  draw();
+});
+
+$("review-file").addEventListener("change", async (ev) => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  stopSimPlayback();
+  video.src = URL.createObjectURL(file);
+  video.style.display = "block";
+  const stem = file.name.replace(/\.[^.]+$/, "");
+  await loadTimeline(stem);
+  draw();
+});
+
+async function loadTimeline(stem) {
+  timeline = null;
+  uploadCurve = [];
+  const notice = $("review-notice");
+  notice.style.display = "none";
+  try {
+    const url = stem ? "/api/timeline?video=" + encodeURIComponent(stem) : "/api/timeline";
+    const res = await fetch(url);
+    if (res.status === 404) {
+      notice.textContent = "No pipeline artifacts found — run the demo or an "
+        + "extraction first, then post the same footage here.";
+      notice.style.display = "block";
+      return;
+    }
+    if (!res.ok) throw new Error(res.statusText);
+    timeline = await res.json();
+
+    // Populate video selector dropdown
+    const sel = $("review-video-select");
+    sel.innerHTML = "";
+    (timeline.videos || []).forEach((v) => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      if (v === timeline.video) opt.selected = true;
+      sel.appendChild(opt);
+    });
+
+    if (stem && !timeline.matched) {
+      notice.textContent = `No run data for “${stem}” — showing the `
+        + `processing timeline of “${timeline.video}” instead.`;
+      notice.style.display = "block";
+    }
+    buildUploadCurve();
+
+    const dur = getTotalDuration();
+    simTime = dur;
+    const scrubber = $("timeline-scrubber");
+    scrubber.max = dur;
+    scrubber.value = dur;
+    $("playhead-readout").textContent = `t = ${dur.toFixed(2)}s`;
+    updateZoomUI();
+  } catch (e) {
+    notice.textContent = "Could not load the processing timeline: " + e.message;
+    notice.style.display = "block";
+  }
+}
+
+function getTotalDuration() {
+  if (!timeline) return 6.0;
+  return Math.max(
+    video.duration || 0,
+    timeline.duration || 0,
+    timeline.series.length ? timeline.series[timeline.series.length - 1].t : 0,
+    1.0
+  );
+}
+
+function getCurrentPlayhead() {
+  if (video.src && video.style.display !== "none" && !isNaN(video.currentTime)) {
+    return video.currentTime;
+  }
+  return simTime;
+}
+
+function buildUploadCurve() {
+  uploadCurve = [];
+  const series = timeline.series;
+  if (!series.length) return;
+  const dur = getTotalDuration();
+  const windows = timeline.upstream;
+  const windowSecs = windows.reduce((acc, w) => acc + (w.t1 - w.t0), 0);
+  const totalBytes = series[series.length - 1].bytes;
+  const rate = windowSecs > 0 ? totalBytes / windowSecs : 0;
+  const step = timeline.step || 0.25;
+  let uploaded = 0;
+  let si = 0, captured = 0;
+  for (let t = 0; t <= dur + step; t += step) {
+    while (si < series.length && series[si].t <= t) captured = series[si++].bytes;
+    const inWindow = windows.some((w) => t >= w.t0 && t <= w.t1);
+    if (inWindow) uploaded = Math.min(captured, uploaded + rate * step);
+    uploadCurve.push({ t: Number(t.toFixed(3)), bytes: Math.round(uploaded) });
+  }
+}
+
+/* ---------- Timeline Zoom & Pan Controls ---------- */
+function setZoom(newZoom) {
+  zoomFactor = Math.max(1.0, Math.min(10.0, Number(newZoom) || 1.0));
+  $("timeline-zoom").value = zoomFactor;
+  $("timeline-pan").disabled = zoomFactor <= 1.0;
+  document.querySelectorAll("[data-zoom]").forEach((btn) => {
+    btn.classList.toggle("active-zoom", Number(btn.dataset.zoom) === zoomFactor);
+  });
+  updateZoomUI();
+  draw();
+}
+
+function getVisibleWindow() {
+  const dur = getTotalDuration();
+  const span = dur / zoomFactor;
+  const maxStart = Math.max(0, dur - span);
+  const tStart = maxStart * panNormalized;
+  const tEnd = tStart + span;
+  return { tStart, tEnd, span, dur };
+}
+
+function updateZoomUI() {
+  const { tStart, tEnd } = getVisibleWindow();
+  $("zoom-window-label").textContent =
+    `${zoomFactor.toFixed(1)}× · [${tStart.toFixed(2)}s – ${tEnd.toFixed(2)}s]`;
+  $("timeline-pan").value = Math.round(panNormalized * 100);
+}
+
+document.querySelectorAll("[data-zoom]").forEach((btn) => {
+  btn.addEventListener("click", () => setZoom(Number(btn.dataset.zoom)));
+});
+$("timeline-zoom").addEventListener("input", (ev) => setZoom(Number(ev.target.value)));
+$("btn-zoom-in").addEventListener("click", () => setZoom(zoomFactor + 1.0));
+$("btn-zoom-out").addEventListener("click", () => setZoom(zoomFactor - 1.0));
+$("btn-zoom-reset").addEventListener("click", () => {
+  panNormalized = 0.0;
+  setZoom(1.0);
+});
+function seekToViewportCenter() {
+  const { tStart, tEnd } = getVisibleWindow();
+  const centerTime = (tStart + tEnd) / 2.0;
+  simTime = centerTime;
+  if (video && video.src) {
+    try {
+      video.currentTime = centerTime;
+    } catch (e) { /* ignore if metadata not yet loaded */ }
+  }
+  const scrubber = $("timeline-scrubber");
+  if (scrubber) scrubber.value = centerTime;
+  const readout = $("playhead-readout");
+  if (readout) readout.textContent = `t = ${centerTime.toFixed(2)}s`;
+}
+
+$("timeline-pan").addEventListener("input", (ev) => {
+  panNormalized = Number(ev.target.value) / 100.0;
+  updateZoomUI();
+  seekToViewportCenter();
+  draw();
+});
+
+// Mouse wheel zoom & drag pan on overlay canvas
+canvas.addEventListener("wheel", (ev) => {
+  if (!timeline) return;
+  ev.preventDefault();
+  const delta = ev.deltaY < 0 ? 0.5 : -0.5;
+  setZoom(zoomFactor + delta);
+}, { passive: false });
+
+canvas.addEventListener("mousedown", (ev) => {
+  isDragging = true;
+  dragStartX = ev.clientX;
+  dragStartPan = panNormalized;
+});
+
+window.addEventListener("mousemove", (ev) => {
+  const rect = canvas.getBoundingClientRect();
+  if (ev.target === canvas && timeline) {
+    const relX = Math.max(0, Math.min(1, (ev.clientX - rect.left - 16) / Math.max(1, rect.width - 32)));
+    const { tStart, span } = getVisibleWindow();
+    hoverTime = tStart + relX * span;
+    draw();
+  }
+  if (!isDragging || zoomFactor <= 1.0) return;
+  const dx = ev.clientX - dragStartX;
+  const panShift = -dx / Math.max(1, rect.width);
+  panNormalized = Math.max(0, Math.min(1, dragStartPan + panShift));
+  updateZoomUI();
+  seekToViewportCenter();
+  draw();
+});
+
+window.addEventListener("mouseup", () => { isDragging = false; });
+canvas.addEventListener("mouseleave", () => { hoverTime = null; draw(); });
+
+/* ---------- Simulated Scrubber Playback ---------- */
+function stopSimPlayback() {
+  simPlaying = false;
+  clearInterval(simTimer);
+  $("btn-sim-play").textContent = "Play Timeline";
+}
+
+$("btn-sim-play").addEventListener("click", () => {
+  if (simPlaying) {
+    stopSimPlayback();
+    return;
+  }
+  simPlaying = true;
+  $("btn-sim-play").textContent = "Pause Timeline";
+  const dur = getTotalDuration();
+  if (simTime >= dur) simTime = 0;
+  simTimer = setInterval(() => {
+    simTime += 0.1;
+    if (simTime >= dur) {
+      simTime = dur;
+      stopSimPlayback();
+    }
+    $("timeline-scrubber").value = simTime;
+    $("playhead-readout").textContent = `t = ${simTime.toFixed(2)}s`;
+    draw();
+  }, 100);
+});
+
+$("timeline-scrubber").addEventListener("input", (ev) => {
+  stopSimPlayback();
+  simTime = Number(ev.target.value);
+  if (video.src && video.style.display !== "none") {
+    video.currentTime = simTime;
+  }
+  $("playhead-readout").textContent = `t = ${simTime.toFixed(2)}s`;
+  draw();
+});
+
+/* ---------- Export Zoomed Timeline CSV ---------- */
+$("btn-export-timeline-csv").addEventListener("click", () => {
+  if (!timeline || !timeline.series) return;
+  const { tStart, tEnd } = getVisibleWindow();
+  const rows = [
+    ["video", "timestamp_sec", "frame_index", "cumulative_frames", "frame_bytes", "cumulative_bytes", "blur_score", "mean_intensity"].join(",")
+  ];
+  timeline.series
+    .filter((p) => p.t >= tStart - 1e-6 && p.t <= tEnd + 1e-6)
+    .forEach((p) => {
+      rows.push([
+        timeline.video,
+        p.t,
+        p.frame_index ?? "",
+        p.frames,
+        p.frame_bytes ?? "",
+        p.bytes,
+        p.blur_score ?? "",
+        p.mean_intensity ?? "",
+      ].join(","));
+    });
+  const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `timeline_${timeline.video}_${tStart.toFixed(1)}s_${tEnd.toFixed(1)}s.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+$("overlay-toggle").addEventListener("change", draw);
+$("show-blur-curve").addEventListener("change", draw);
+$("overlay-opacity").addEventListener("input", () => {
+  canvas.style.opacity = $("overlay-opacity").value / 100;
+});
+["play", "seeked", "pause", "loadedmetadata", "timeupdate"].forEach((evt) =>
+  video.addEventListener(evt, () => {
+    if (!isNaN(video.currentTime)) {
+      $("timeline-scrubber").value = video.currentTime;
+      $("playhead-readout").textContent = `t = ${video.currentTime.toFixed(2)}s`;
+    }
+    draw();
+  }));
+new ResizeObserver(draw).observe(canvas);
+
+function draw() {
+  cancelAnimationFrame(rafId);
+  render();
+  if (video.src && !video.paused && !video.ended) {
+    rafId = requestAnimationFrame(draw);
+  }
+}
+
+function render() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w; canvas.height = h;
+  }
+  ctx.clearRect(0, 0, w, h);
+  if (!$("overlay-toggle").checked || !timeline) return;
+
+  const now = getCurrentPlayhead();
+  const { tStart, tEnd, span } = getVisibleWindow();
+  const padX = 18;
+  const plotW = Math.max(10, w - padX * 2);
+  const x = (t) => ((t - tStart) / Math.max(0.001, span)) * plotW + padX;
+
+  const hasVideoVisible = video.style.display !== "none" && video.src;
+  const chartTop = hasVideoVisible ? h * 0.56 : 54;
+  const chartBottom = h - 28;
+  const chartH = Math.max(40, chartBottom - chartTop);
+  const maxBytes = timeline.series.length
+    ? timeline.series[timeline.series.length - 1].bytes : 1;
+  const y = (bytes) => chartBottom - (bytes / maxBytes) * chartH;
+
+  /* chart backing */
+  ctx.fillStyle = hasVideoVisible ? "rgba(13, 17, 23, 0.78)" : "rgba(13, 17, 23, 0.96)";
+  ctx.fillRect(0, chartTop - 30, w, h - chartTop + 30);
+
+  /* horizontal grid lines & time ticks */
+  ctx.strokeStyle = "rgba(48, 54, 61, 0.65)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const gy = chartTop + (chartH * i) / 4;
+    ctx.beginPath(); ctx.moveTo(padX, gy); ctx.lineTo(w - padX, gy); ctx.stroke();
+  }
+  const tickCount = 6;
+  ctx.fillStyle = "rgba(139, 148, 158, 0.9)";
+  ctx.font = "11px ui-monospace, monospace";
+  for (let i = 0; i <= tickCount; i++) {
+    const tickT = tStart + (span * i) / tickCount;
+    const tx = x(tickT);
+    ctx.fillText(tickT.toFixed(2) + "s", Math.min(w - 46, Math.max(padX, tx - 14)), h - 8);
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(padX, chartTop - 22, plotW, chartH + 26);
+  ctx.clip();
+
+  /* upstream coverage windows */
+  timeline.upstream.forEach((win) => {
+    if (win.t1 < tStart || win.t0 > tEnd) return;
+    const wx0 = x(win.t0);
+    const wx1 = x(win.t1);
+    ctx.fillStyle = "rgba(63, 185, 80, 0.16)";
+    ctx.fillRect(wx0, chartTop - 18, Math.max(3, wx1 - wx0), chartH + 18);
+    ctx.fillStyle = "rgba(63, 185, 80, 0.95)";
+    ctx.font = "11px sans-serif";
+    ctx.fillText(win.zone + " (" + timeline.network + ")", Math.max(padX + 4, wx0 + 4), chartTop - 6);
+  });
+
+  /* chunk-created markers */
+  timeline.chunks.forEach((c, i) => {
+    if (c.t > now || c.t < tStart || c.t > tEnd) return;
+    const cx = x(c.t);
+    ctx.strokeStyle = "rgba(210, 153, 34, 0.9)";
+    ctx.beginPath(); ctx.moveTo(cx, chartTop); ctx.lineTo(cx, chartBottom); ctx.stroke();
+    ctx.fillStyle = "rgba(210, 153, 34, 1)";
+    ctx.font = "11px sans-serif";
+    ctx.fillText(`chunk ${i + 1} (${c.frames}f)`, cx + 4, chartTop + 14);
+  });
+
+  /* captured-bytes line (progressive reveal up to playhead) */
+  const visibleSeries = timeline.series.filter((p) => p.t <= now);
+  strokeSeries(visibleSeries.map((p) => [x(p.t), y(p.bytes)]), "#58a6ff", 2.2);
+
+  /* individual frame nodes when zoomed in */
+  visibleSeries.forEach((p) => {
+    if (p.t < tStart || p.t > tEnd) return;
+    ctx.fillStyle = "#58a6ff";
+    ctx.beginPath();
+    ctx.arc(x(p.t), y(p.bytes), zoomFactor >= 2 ? 4 : 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  /* upstreamed-bytes line */
+  strokeSeries(uploadCurve.filter((p) => p.t <= now)
+    .map((p) => [x(p.t), y(p.bytes)]), "#3fb950", 2.0);
+
+  /* optional blur score trace */
+  if ($("show-blur-curve") && $("show-blur-curve").checked && visibleSeries.length) {
+    const maxBlur = Math.max(300, ...timeline.series.map((p) => p.blur_score || 0));
+    const yBlur = (b) => chartBottom - ((b || 0) / maxBlur) * (chartH * 0.85);
+    strokeSeries(visibleSeries.map((p) => [x(p.t), yBlur(p.blur_score)]), "#bc8cff", 1.5);
+  }
+
+  /* playhead */
+  if (now >= tStart && now <= tEnd) {
+    const px = x(now);
+    ctx.strokeStyle = "rgba(230, 237, 243, 0.9)";
+    ctx.beginPath(); ctx.moveTo(px, chartTop - 18); ctx.lineTo(px, chartBottom); ctx.stroke();
+  }
+
+  /* hover crosshair & tooltip */
+  if (hoverTime !== null && hoverTime >= tStart && hoverTime <= tEnd) {
+    const hx = x(hoverTime);
+    ctx.strokeStyle = "rgba(88, 166, 255, 0.55)";
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(hx, chartTop); ctx.lineTo(hx, chartBottom); ctx.stroke();
+    ctx.setLineDash([]);
+
+    const nearest = timeline.series.reduce((best, p) =>
+      (!best || Math.abs(p.t - hoverTime) < Math.abs(best.t - hoverTime)) ? p : best, null);
+    if (nearest) {
+      const tip = `t=${nearest.t.toFixed(2)}s · frame #${nearest.frame_index ?? nearest.frames} · ${(nearest.bytes / 1024).toFixed(0)} KB · blur ${nearest.blur_score ?? '—'}`;
+      ctx.font = "11.5px ui-monospace, monospace";
+      const tw = ctx.measureText(tip).width + 14;
+      const tx = Math.min(w - tw - 12, Math.max(padX, hx + 8));
+      ctx.fillStyle = "rgba(22, 27, 34, 0.95)";
+      ctx.fillRect(tx, chartTop + 20, tw, 24);
+      ctx.strokeStyle = "rgba(88, 166, 255, 0.6)";
+      ctx.strokeRect(tx, chartTop + 20, tw, 24);
+      ctx.fillStyle = "#e6edf3";
+      ctx.fillText(tip, tx + 7, chartTop + 36);
+    }
+  }
+  ctx.restore();
+
+  /* live event caption */
+  const caption = currentCaption(now);
+  ctx.font = "600 13px sans-serif";
+  ctx.fillStyle = "rgba(230, 237, 243, 0.95)";
+  ctx.fillText(`${timeline.video} — ${caption}`, padX, 24);
+
+  /* legend */
+  ctx.font = "11px sans-serif";
+  ctx.fillStyle = "#58a6ff"; ctx.fillText("● captured bytes", padX, chartTop - 8);
+  ctx.fillStyle = "#3fb950"; ctx.fillText("● upstreamed bytes", padX + 105, chartTop - 8);
+  ctx.fillStyle = "#d29922"; ctx.fillText("| chunk created", padX + 225, chartTop - 8);
+  ctx.fillStyle = "#bc8cff"; ctx.fillText("● blur score", padX + 320, chartTop - 8);
+}
+
+function strokeSeries(points, color, width) {
+  if (points.length < 2) return;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width || 2;
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1]);
+  points.forEach(([px, py]) => ctx.lineTo(px, py));
+  ctx.stroke();
+  ctx.lineWidth = 1;
+}
+
+function currentCaption(now) {
+  const win = timeline.upstream.find((u) => now >= u.t0 && now <= u.t1);
+  if (win) return `⬆ Upstreaming to ${win.zone} (${timeline.network})`;
+  const recent = timeline.chunks.filter((c) => c.t <= now && now - c.t < 2.0).pop();
+  if (recent) {
+    const idx = timeline.chunks.indexOf(recent) + 1;
+    return `➕ Chunk ${idx} created — ${recent.frames} frames buffered`;
+  }
+  const kept = timeline.series.filter((p) => p.t <= now).length;
+  return kept ? `● Capturing — ${kept} frames kept` : "○ Waiting for first kept frame";
+}
+</script>
+</body>
+</html>

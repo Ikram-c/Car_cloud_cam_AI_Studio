@@ -1,0 +1,5 @@
+{
+  "name": "Cloud Optimised DashCam",
+  "description": "Quality-gated, illumination-aware, coverage-chunked frame extraction from vehicle-mounted video with real-time processing timeline review.",
+  "requestFramePermissions": []
+}
